@@ -5,6 +5,7 @@ import {
   monthKey,
   getMonthLabel,
   getMonthOptions,
+  isBettingOpen,
   prevMonthKey,
   nextMonthKey,
   formatIsoDate,
@@ -43,6 +44,7 @@ export default function Home() {
 
   const options = useMemo(() => getMonthOptions(month), [month]);
   const isCurrentMonth = month === CURRENT_MONTH;
+  const bettingOpen = isBettingOpen(month);
 
   const load = useCallback(async (m) => {
     setLoading(true);
@@ -315,16 +317,18 @@ export default function Home() {
 
           <button
             onClick={placeBet}
-            disabled={submitting || !isCurrentMonth}
+            disabled={submitting || !bettingOpen}
             className="mt-4 w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white shadow transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isCurrentMonth
+            {bettingOpen
               ? submitting
                 ? "Placing bet…"
                 : myExistingBet
                   ? "Update Bet"
                   : "Place Bet"
-              : "Betting closed for this month"}
+              : isCurrentMonth
+                ? "Betting closed — locked in on the 25th"
+                : "Betting closed for this month"}
           </button>
         </section>
 

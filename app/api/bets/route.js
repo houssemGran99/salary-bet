@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { readData, mutate, getMonth } from "@/lib/store";
-import { monthKey, getMonthOptions } from "@/lib/dates";
+import { monthKey, getMonthOptions, isBettingOpen } from "@/lib/dates";
 
 export async function GET(request) {
   try {
@@ -27,6 +27,12 @@ export async function POST(request) {
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+    if (!isBettingOpen(month)) {
+      return NextResponse.json(
+        { error: "Betting is closed for this month" },
+        { status: 400 },
+      );
     }
     const validDates = new Set(getMonthOptions(month).map((o) => o.iso));
     if (!validDates.has(date)) {
