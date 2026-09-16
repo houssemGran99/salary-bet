@@ -12,6 +12,24 @@ import {
 
 const CURRENT_MONTH = monthKey();
 
+// Safely parses a fetch Response as JSON (tolerating an empty body) and
+// throws a readable error when the request failed.
+async function parseResponse(res) {
+  const text = await res.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // non-JSON body (e.g. a platform error page) — fall through
+    }
+  }
+  if (!res.ok) {
+    throw new Error(data.error || `Server error (${res.status})`);
+  }
+  return data;
+}
+
 export default function Home() {
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [bets, setBets] = useState([]);
@@ -31,11 +49,11 @@ export default function Home() {
     setError("");
     try {
       const res = await fetch(`/api/bets?month=${encodeURIComponent(m)}`);
-      const data = await res.json();
+      const data = await parseResponse(res);
       setBets(data.bets || []);
       setWinningDate(data.winningDate || null);
-    } catch {
-      setError("Couldn't load bets. Try refreshing.");
+    } catch (e) {
+      setError(`Couldn't load bets: ${e.message}. Try refreshing.`);
     } finally {
       setLoading(false);
     }
@@ -90,8 +108,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month, name: trimmedName, date: selectedDate }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to place bet");
+      const data = await parseResponse(res);
       setBets(data.bets || []);
       setWinningDate(data.winningDate ?? null);
       try {
@@ -115,8 +132,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month, date: winnerPickDate }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to mark winner");
+      const data = await parseResponse(res);
       setBets(data.bets || []);
       setWinningDate(data.winningDate ?? null);
     } catch (e) {
@@ -126,12 +142,18 @@ export default function Home() {
 
   async function clearWinner() {
     if (!confirm("Unmark the winning date?")) return;
-    const res = await fetch(`/api/bets/win?month=${encodeURIComponent(month)}`, {
-      method: "DELETE",
-    });
-    const data = await res.json();
-    setBets(data.bets || []);
-    setWinningDate(data.winningDate ?? null);
+    setError("");
+    try {
+      const res = await fetch(
+        `/api/bets/win?month=${encodeURIComponent(month)}`,
+        { method: "DELETE" },
+      );
+      const data = await parseResponse(res);
+      setBets(data.bets || []);
+      setWinningDate(data.winningDate ?? null);
+    } catch (e) {
+      setError(e.message);
+    }
   }
 
   async function resetMonth() {
@@ -141,19 +163,30 @@ export default function Home() {
       )
     )
       return;
-    const res = await fetch(`/api/bets?month=${encodeURIComponent(month)}`, {
-      method: "DELETE",
-    });
-    const data = await res.json();
-    setBets(data.bets || []);
-    setWinningDate(data.winningDate ?? null);
+    setError("");
+    try {
+      const res = await fetch(`/api/bets?month=${encodeURIComponent(month)}`, {
+        method: "DELETE",
+      });
+      const data = await parseResponse(res);
+      setBets(data.bets || []);
+      setWinningDate(data.winningDate ?? null);
+    } catch (e) {
+      setError(e.message);
+    }
   }
 
   async function clearAll() {
     if (!confirm("Delete ALL bets for every month? This can't be undone."))
       return;
-    await fetch("/api/bets/all", { method: "DELETE" });
-    load(month);
+    setError("");
+    try {
+      const res = await fetch("/api/bets/all", { method: "DELETE" });
+      await parseResponse(res);
+      load(month);
+    } catch (e) {
+      setError(e.message);
+    }
   }
 
   return (
