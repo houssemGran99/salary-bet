@@ -104,6 +104,11 @@ export default function Home() {
     return bets.filter((b) => b.date === winningDate);
   }, [bets, winningDate]);
 
+  const winningQuota = useMemo(() => {
+    if (!winningDate) return null;
+    return options.find((o) => o.iso === winningDate)?.quota ?? null;
+  }, [options, winningDate]);
+
   async function placeBet() {
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -249,6 +254,9 @@ export default function Home() {
             <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
               {formatIsoDate(winningDate)}
             </p>
+            <p className="mt-1 text-sm font-semibold text-amber-600 dark:text-amber-400">
+              {winningQuota != null && `${winningQuota.toFixed(2)}x quota`}
+            </p>
             {winners.length > 0 ? (
               <p className="mt-2 text-slate-600 dark:text-slate-300">
                 Winners:{" "}
@@ -281,8 +289,12 @@ export default function Home() {
             </p>
           )}
 
-          <p className="mt-4 mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <p className="mt-4 text-sm font-semibold text-slate-700 dark:text-slate-200">
             Pick a date
+          </p>
+          <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+            Quota shown per date — the 27th is the usual payday, so it has
+            the lowest quota. Further from the 27th means a higher quota.
           </p>
           {loading ? (
             <p className="text-slate-500 dark:text-slate-400">Loading…</p>
@@ -316,6 +328,9 @@ export default function Home() {
                       {opt.nextMonth && (
                         <sup className="text-[10px] text-slate-400">next</sup>
                       )}
+                    </span>
+                    <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                      {opt.quota.toFixed(2)}x
                     </span>
                     {count > 0 && (
                       <span className="mt-1 rounded-full bg-slate-900/80 px-1.5 text-[10px] font-semibold text-white dark:bg-white/20">
@@ -371,6 +386,9 @@ export default function Home() {
                     >
                       {opt.day}
                       {opt.nextMonth ? " next" : ""}
+                    </span>
+                    <span className="mt-0.5 shrink-0 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                      {opt.quota.toFixed(2)}x
                     </span>
                     <span className="text-sm text-slate-700 dark:text-slate-300">
                       {bets
