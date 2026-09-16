@@ -41,6 +41,18 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [winnerPickDate, setWinnerPickDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+
+  function askConfirm(message) {
+    return new Promise((resolve) => {
+      setConfirmDialog({ message, resolve });
+    });
+  }
+
+  function resolveConfirm(answer) {
+    confirmDialog?.resolve(answer);
+    setConfirmDialog(null);
+  }
 
   const options = useMemo(() => getMonthOptions(month), [month]);
   const isCurrentMonth = month === CURRENT_MONTH;
@@ -125,8 +137,10 @@ export default function Home() {
 
   async function markWinner() {
     if (!winnerPickDate) return;
-    if (!confirm(`Mark ${formatIsoDate(winnerPickDate)} as the winning date?`))
-      return;
+    const ok = await askConfirm(
+      `Mark ${formatIsoDate(winnerPickDate)} as the winning date?`,
+    );
+    if (!ok) return;
     setError("");
     try {
       const res = await fetch("/api/bets/win", {
@@ -143,7 +157,8 @@ export default function Home() {
   }
 
   async function clearWinner() {
-    if (!confirm("Unmark the winning date?")) return;
+    const ok = await askConfirm("Unmark the winning date?");
+    if (!ok) return;
     setError("");
     try {
       const res = await fetch(
@@ -159,12 +174,10 @@ export default function Home() {
   }
 
   async function resetMonth() {
-    if (
-      !confirm(
-        `Delete all bets for ${getMonthLabel(month)}? This can't be undone.`,
-      )
-    )
-      return;
+    const ok = await askConfirm(
+      `Delete all bets for ${getMonthLabel(month)}? This can't be undone.`,
+    );
+    if (!ok) return;
     setError("");
     try {
       const res = await fetch(`/api/bets?month=${encodeURIComponent(month)}`, {
@@ -179,8 +192,10 @@ export default function Home() {
   }
 
   async function clearAll() {
-    if (!confirm("Delete ALL bets for every month? This can't be undone."))
-      return;
+    const ok = await askConfirm(
+      "Delete ALL bets for every month? This can't be undone.",
+    );
+    if (!ok) return;
     setError("");
     try {
       const res = await fetch("/api/bets/all", { method: "DELETE" });
@@ -420,6 +435,37 @@ export default function Home() {
           </div>
         </details>
       </main>
+
+      {confirmDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => resolveConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-slate-800 dark:text-slate-100">
+              {confirmDialog.message}
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => resolveConfirm(false)}
+                className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => resolveConfirm(true)}
+                autoFocus
+                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
